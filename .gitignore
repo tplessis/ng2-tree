@@ -7,14 +7,9 @@ typings/
 .publish/
 yarn.lock
 
-**/*.js.map
-
 demo/**/*.js
 demo/**/*.d.ts
 demo/**/*.css
-
-*.js.map
-!*.d.ts
 
 !.config/*.js
 
@@ -26,5 +21,3 @@ factories
 
 yarn.lock
 yarn-error.log
-
-*.metadata.json
