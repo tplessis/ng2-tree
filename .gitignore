@@ -13,16 +13,10 @@ demo/**/*.js
 demo/**/*.d.ts
 demo/**/*.css
 
-src/**/*.js
-src/**/*.d.ts
-src/**/*.css
-
-*.js
-*.d.ts
+*.js.map
+!*.d.ts
 
 !.config/*.js
-
-bundles
 
 demo-build
 
