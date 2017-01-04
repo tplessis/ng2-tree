@@ -12,7 +12,8 @@ export class FoldingType {
 }
 
 export interface TreeModel {
-  value: string | RenamableNode;
+  path: string;
+  data: Object;
   children?: Array<TreeModel>;
   _status?: TreeStatus;
   _foldingType?: FoldingType;

@@ -1,14 +1,11 @@
 import { Input, Component, OnInit, EventEmitter, Output, ElementRef, Inject } from '@angular/core';
-import { TreeStatus, TreeModel, FoldingType, NodeEvent, RenamableNode, NodeSelectedEvent } from './tree.types';
+import { TreeStatus, TreeModel, FoldingType, NodeEvent, NodeSelectedEvent } from './tree.types';
 import { NodeDraggableService } from './draggable/node-draggable.service';
-import { NodeMenuService } from './menu/node-menu.service';
 import { NodeDraggableEventAction, NodeDraggableEvent } from './draggable/draggable.types';
-import { NodeMenuEvent, NodeMenuAction, NodeMenuItemSelectedEvent, NodeMenuItemAction } from './menu/menu.types';
-import { NodeEditableEvent, NodeEditableEventAction } from './editable/editable.type';
 import { TreeService } from './tree.service';
-import { isLeftButtonClicked, isRightButtonClicked } from './common/utils/event.utils';
+import { Routes } from "@angular/router";
+import { isLeftButtonClicked } from './common/utils/event.utils';
 import * as _ from 'lodash';
-import { applyNewValueToRenamable, isRenamable, isValueEmpty } from './common/utils/type.utils';
 import { styles } from './tree.styles';
 
 @Component({
@@ -19,14 +16,9 @@ import { styles } from './tree.styles';
     <li>
       <div (contextmenu)="showMenu($event)" [nodeDraggable]="element" [tree]="tree">
         <div class="folding" (click)="switchFoldingType($event, tree)" [ngClass]="getFoldingTypeCssClass(tree)"></div>
-        <div href="#" class="node-value" *ngIf="!isEditInProgress()" [class.node-selected]="isSelected" (click)="onNodeSelected($event)">{{tree.value}}</div>
+        <div href="#" class="node-value" [class.node-selected]="isSelected" (click)="onNodeSelected($event)">{{tree.data.menu.title}}</div>
 
-        <input type="text" class="node-value" *ngIf="isEditInProgress()"
-               [nodeEditable]="tree.value"
-               (valueChanged)="applyNewValue($event, tree)"/>
       </div>
-
-      <node-menu *ngIf="isMenuVisible" (menuItemSelected)="onMenuItemSelected($event)"></node-menu>
 
       <template [ngIf]="isNodeExpanded()">
         <tree-internal *ngFor="let child of tree.children; let position = index"
@@ -54,22 +46,25 @@ export class TreeInternalComponent implements OnInit {
 
   private isLeaf: boolean;
   private isSelected: boolean = false;
-  private isMenuVisible: boolean = false;
 
-  public constructor(@Inject(NodeMenuService) private nodeMenuService: NodeMenuService,
-                     @Inject(NodeDraggableService) private nodeDraggableService: NodeDraggableService,
+  public constructor(@Inject(NodeDraggableService) private nodeDraggableService: NodeDraggableService,
                      @Inject(TreeService) private treeService: TreeService,
                      @Inject(ElementRef) private element: ElementRef) {
   }
 
   public ngOnInit(): void {
     this.indexInParent = 0;
+    this.isLeaf = true;
 
-    this.isLeaf = !Array.isArray(this.tree.children);
+    if(Array.isArray(this.tree.children)) {
+      if(this.tree.children.length > 0) {
+        this.isLeaf = false;
+      }
+    }
+
     this.tree._indexInParent = this.indexInParent;
 
     this.setUpNodeSelectedEventHandler();
-    this.setUpMenuEventHandler();
     this.setUpDraggableEventHandler();
   }
 
@@ -77,13 +72,6 @@ export class TreeInternalComponent implements OnInit {
     this.treeService.nodeSelected$
       .filter((e: NodeSelectedEvent) => this.tree !== e.node)
       .subscribe(() => this.isSelected = false);
-  }
-
-  private setUpMenuEventHandler(): void {
-    this.nodeMenuService.nodeMenuEvents$
-      .filter((e: NodeMenuEvent) => this.element.nativeElement !== e.sender)
-      .filter((e: NodeMenuEvent) => e.action === NodeMenuAction.Close)
-      .subscribe(() => this.isMenuVisible = false);
   }
 
   // DRAG-N-DROP -------------------------------------------------------------------------------------------------------
@@ -131,11 +119,6 @@ export class TreeInternalComponent implements OnInit {
     });
   }
 
-  private isEditInProgress(): boolean {
-    return this.tree._status === TreeStatus.EditInProgress
-      || this.tree._status === TreeStatus.New;
-  }
-
   private isFolder(): boolean {
     return !this.isLeaf;
   }
@@ -176,7 +159,7 @@ export class TreeInternalComponent implements OnInit {
 
   private getFoldingTypeCssClass(node: TreeModel): string {
     if (!node._foldingType) {
-      if (node.children) {
+      if (node.children && node.children.length > 0) {
         node._foldingType = FoldingType.Expanded;
       } else {
         node._foldingType = FoldingType.Leaf;
@@ -202,109 +185,11 @@ export class TreeInternalComponent implements OnInit {
     node._foldingType = this.getNextFoldingType(node);
   }
 
-  // MENU --------------------------------------------------------------------------------------------------------------
-
-  private onMenuItemSelected(e: NodeMenuItemSelectedEvent): void {
-    switch (e.nodeMenuItemAction) {
-      case NodeMenuItemAction.NewTag:
-        this.onNewSelected(e);
-        break;
-      case NodeMenuItemAction.NewFolder:
-        this.onNewSelected(e);
-        break;
-      case NodeMenuItemAction.Rename:
-        this.onRenameSelected();
-        break;
-      case NodeMenuItemAction.Remove:
-        this.onRemoveSelected();
-        break;
-      default:
-        throw new Error(`Chosen menu item doesn't exist`);
-    }
-  }
-
-  private onRenameSelected(): void {
-    this.tree._status = TreeStatus.EditInProgress;
-    this.isMenuVisible = false;
-  }
-
-  private onRemoveSelected(): void {
-    this.treeService.nodeRemoved$.next({
-      node: this.tree,
-      parent: this.parentTree
-    });
-
-    this.nodeRemoved.emit({node: this.tree});
-  }
-
-  private onNewSelected(e: NodeMenuItemSelectedEvent): void {
-    if (!this.tree.children || !this.tree.children.push) {
-      this.tree.children = [];
-    }
-    const newNode: TreeModel = {value: '', _status: TreeStatus.New};
-
-    if (e.nodeMenuItemAction === NodeMenuItemAction.NewFolder) {
-      newNode.children = [];
-    }
-
-    this.isLeaf ? this.parentTree.children.push(newNode) : this.tree.children.push(newNode);
-    this.isMenuVisible = false;
-  }
-
   private onChildRemoved(e: NodeEvent, parent: TreeModel = this.tree): void {
     const childIndex = _.findIndex(parent.children, (child: any) => child === e.node);
     if (childIndex >= 0) {
       parent.children.splice(childIndex, 1);
     }
-  }
-
-  private showMenu(e: MouseEvent): void {
-    if (isRightButtonClicked(e)) {
-      this.isMenuVisible = !this.isMenuVisible;
-      this.nodeMenuService.nodeMenuEvents$.next({
-        sender: this.element.nativeElement,
-        action: NodeMenuAction.Close
-      });
-    }
-    e.preventDefault();
-  }
-
-  private applyNewValue(e: NodeEditableEvent, node: TreeModel): void {
-    if (e.action === NodeEditableEventAction.Cancel) {
-      if (isValueEmpty(e.value)) {
-        return this.nodeRemoved.emit({node: this.tree});
-      }
-
-      node._status = TreeStatus.Modified;
-      return;
-    }
-
-    if (isValueEmpty(e.value)) {
-      return;
-    }
-
-    const nodeOldValue = node.value;
-
-    if (isRenamable(node.value)) {
-      node.value = applyNewValueToRenamable(node.value as RenamableNode, e.value);
-    } else {
-      node.value = e.value;
-    }
-
-    if (node._status === TreeStatus.New) {
-      this.treeService.nodeCreated$.next({node, parent: this.parentTree});
-    }
-
-    if (node._status === TreeStatus.EditInProgress) {
-      this.treeService.nodeRenamed$.next({
-        node,
-        parent: this.parentTree,
-        oldValue: nodeOldValue,
-        newValue: node.value
-      });
-    }
-
-    node._status = TreeStatus.Modified;
   }
 
   private onNodeSelected(e: MouseEvent): void {
@@ -321,6 +206,9 @@ export class TreeInternalComponent implements OnInit {
   providers: [TreeService]
 })
 export class TreeComponent implements OnInit {
+  @Input()
+  public routes: Routes;
+
   @Input()
   public tree: TreeModel;
 
@@ -343,6 +231,20 @@ export class TreeComponent implements OnInit {
   }
 
   public ngOnInit(): void {
+    if (this.routes) {
+      const rootNode: TreeModel = {path: '', data: {
+        menu: {
+          title: 'Menu'
+        }
+      }, children: [], _status: TreeStatus.New};
+
+      this.routes.forEach((tree:TreeModel) => {
+        rootNode.children.push(tree);
+      });
+
+      this.tree = rootNode;
+    }
+
     this.treeService.nodeRemoved$.subscribe((e: NodeEvent) => {
       this.nodeRemoved.emit(e);
     });

@@ -2,6 +2,13 @@
 
 ng2-tree is a simple [Angular 2](https://github.com/angular/angular) component for visualizing data that can be naturally represented as a tree.
 
+## Fork update
+
+NG2-Tree can now be used with a Routes array. Each route is converted as a TreeModel. Useful to organize your navigation menus in backoffice.
+See [demo](https://github.com/tplessis/ng2-tree/tree/develop/demo).
+
+Note: Contextual menu has been removed too.
+
 ## :clapper: Usage
 Ok, let's start with an installation - all you need to do is:
 

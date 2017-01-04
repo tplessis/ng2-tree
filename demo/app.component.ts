@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { Routes } from "@angular/router";
 import { NodeEvent, TreeModel, RenamableNode } from '../index';
 
 declare const alertify: any;
@@ -8,20 +9,9 @@ declare const alertify: any;
   template: `
     <div class="tree-demo-app">
       <div class="tree-container">
-        <p>Fonts tree</p>
+        <p>Top menu</p>
         <tree
-          [tree]="fonts" 
-          (nodeRemoved)="onNodeRemoved($event)"
-          (nodeRenamed)="onNodeRenamed($event)"
-          (nodeSelected)="onNodeSelected($event)"
-          (nodeMoved)="onNodeMoved($event)"
-          (nodeCreated)="onNodeCreated($event)">
-        </tree>
-      </div>
-      <div class="tree-container">
-        <p>Programming languages tree</p>
-        <tree 
-          [tree]="pls" 
+          [routes]="navbarMenu" 
           (nodeRemoved)="onNodeRemoved($event)"
           (nodeRenamed)="onNodeRenamed($event)"
           (nodeSelected)="onNodeSelected($event)"
@@ -50,91 +40,82 @@ declare const alertify: any;
   `]
 })
 export class AppComponent {
-  public fonts: TreeModel = {
-    value: 'Fonts',
-    children: [
-      {
-        value: 'Serif',
-        children: [
-          {value: 'Antiqua'},
-          {value: 'DejaVu Serif'},
-          {value: 'Garamond'},
-          {value: 'Georgia'},
-          {value: 'Times New Roman'},
-          {
-            value: 'Slab serif',
-            children: [
-              {value: 'Candida'},
-              {value: 'Swift'},
-              {value: 'Guardian Egyptian'}
-            ]
-          }
-        ]
-      },
-      {
-        value: 'Sans-serif',
-        children: [
-          {value: 'Arial'},
-          {value: 'Century Gothic'},
-          {value: 'DejaVu Sans'},
-          {value: 'Futura'},
-          {value: 'Geneva'},
-          {value: 'Liberation Sans'}
-        ]
-      },
-      {
-        value: 'Monospace',
-        children: [
-          {value: 'Input Mono'},
-          {value: 'Roboto Mono'},
-          {value: 'Liberation Mono'},
-          {value: 'Hack'},
-          {value: 'Consolas'},
-          {value: 'Menlo'},
-          {value: 'Source Code Pro'}
-        ]
-      }
-    ]
-  };
 
-  public pls: TreeModel = {
-    value: 'Programming languages by programming paradigm',
-    children: [
-      {
-        value: 'Aspect-oriented programming',
-        children: [
-          {value: 'AspectJ'},
-          {value: 'AspectC++'}
-        ]
+  public navbarMenu:Routes = [
+    {
+      path: 'home',
+      data: {
+        menu: {
+          title: 'Home',
+          order: 1,
+        }
       },
-      {
-        value: 'Object-oriented programming',
-        children: [
-          {
-            value: {
-              name: 'Java',
-              setName(name: string): void {
-                this.name = name;
-              },
-              toString(): string {
-                return this.name;
-              }
-            } as RenamableNode
+      children: [
+        {
+          path: 'welcome',
+          data: {
+            menu: {
+              title: 'Welcome',
+              order: 1
+            }
           },
-          {value: 'C++'},
-          {value: 'C#'}
-        ]
+          children: []
+        },
+        {
+          path: 'news',
+          data: {
+            menu: {
+              title: 'News',
+              order: 2
+            }
+          },
+          loadChildren: 'app/news/news.module#NewsModule'
+        }
+      ]
+    },
+    {
+      path: 'blog',
+      data: {
+        menu: {
+          title: 'Blog',
+          order: 2,
+        }
       },
-      {
-        value: 'Prototype-based programming',
-        children: [
-          {value: 'JavaScript'},
-          {value: 'CoffeeScript'},
-          {value: 'TypeScript'}
-        ]
-      }
-    ]
-  };
+      children: [
+        {
+          path: 'posts',
+          data: {
+            menu: {
+              title: 'Posts',
+              order: 1
+            }
+          },
+          children: []
+        },
+        {
+          path: 'categories',
+          data: {
+            menu: {
+              title: 'Categories',
+              order: 2
+            }
+          },
+          children: []
+        }
+      ]
+    },
+    {
+      path: 'admin',
+      data: {
+        menu: {
+          title: 'Admin',
+          order: 5,
+        }
+      },
+      children: []
+    }
+  ];
+
 
   public onNodeRemoved(e: NodeEvent): void {
     this.logEvent(e, 'Removed');
@@ -157,7 +138,6 @@ export class AppComponent {
   }
 
   public logEvent(e: NodeEvent, message: string): void {
-    console.log(e);
-    alertify.message(`${message}: ${e.node.value}`);
+    console.log(this.navbarMenu);
   }
 }
